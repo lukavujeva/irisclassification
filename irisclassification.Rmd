@@ -1,0 +1,124 @@
+---
+title: "Iris Classification Capstone Project"
+author: "Luka Vujeva"
+date: "6/17/2019"
+output:
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The goal of this project is to classify Iris flowers based on their epal length and width, and their petal length and width. This was done using a variety of machine learning algorithms, namely cross validation, linear discriminant analysis, k nearest neighbours, classification and regression trees. In the end, the most accurate algorithm will be used to classify the Irises. The dataset was provided by Kaggle, and the link to it is https://www.kaggle.com/uciml/iris/downloads/iris-species.zip/2 , but it can also be found in my git repository.
+
+## Data Cleaning
+
+First we start by loading the caret library and importing the .csv file that the data is in.
+```{r}
+library(caret)
+df <- read.csv("Iris.csv")
+```
+
+To prepare the data for use in our case study, we need to split it into a train set and a validation set. To do this we will take 80% of the data as the training set, and use the remaining 20% as the validation set.
+
+```{r}
+train <- createDataPartition(df$Species, p=.8, list=F)
+test <- df[-train,]
+```
+
+## Data Exploration
+
+Here we will look at the basic attributes of the data set.
+
+```{r}
+#next check the dimensions of the dataset
+dim(df)
+
+#next we go through the types of attributes
+sapply(df, class)
+head(df)
+levels(df$Species)
+summary(df)
+```
+
+As we can see, the dataset contains 6 columns: Id, SepalLengthCm, SepalWidthCm, PetalWidthCm, PetalLengthCm and Species. The data set also contains 150 columns.
+
+Next we split our data into x and y values.
+
+```{r}
+x <- df[,1:4]
+y <- df[,5]
+
+par(mfrow=c(1,4))
+```
+
+Next we will plot the data as a box charts to illustrate the range of the data
+
+```{r}
+for(i in 1:4){
+  boxplot(x[,i], main=names(iris)[i])
+}
+```
+
+##MODELING
+ 
+In this section we will try a variety of machine learning algorithms to see which produces the most accurate resluts.
+
+```{r}
+#we first try cross validation
+control <- trainControl(method="cv", number=10)
+metric = "Accuracy"
+```
+
+Accuracy the number of correctly predicted instances in the dataset given as a percentage
+
+```{r}
+#Next we try Linear Discriminant Analysis (LDA)
+set.seed(1)
+fit.lda <- train(Species~., data=df, method="lda", metric=metric, trControl=control)
+
+#Next we can try the K Nearest Neighbours Method
+set.seed(7)
+fit.knn <- train(Species~., data=df, method="knn", metric=metric, trControl=control)
+
+# Finally we try Classification and Regression Trees
+set.seed(7)
+fit.cart <- train(Species~., data=df, method="rpart", metric=metric, trControl=control)
+
+```
+
+## Results
+
+Now that we have tried the various algorithms, we can put it all together and decide on the best one for our use case.
+
+```{r}
+# Now we can put the accuracy of models in a table and determine which has the highest accuracy
+results <- resamples(list(lda=fit.lda, cart=fit.cart, knn=fit.knn))
+summary(results)
+
+#next we plot the results in a dot plot
+dotplot(results)
+print(fit.lda)
+```
+
+As you can see in the summary and the dot plot above, though all of the methods were relatively accurate, the Linear Discriminant Analysis, or LDA, method was the most accurate in classifying the Iris flowers, with the k nearest neighbours method coming in second, and the  classification and regression trees method coming in third.
+
+Finally, given that the LDA method is the most accurate, we can proceed in using it against our validation set, and looking at the results in a confusion matrix.
+
+```{r}
+predictions <- predict(fit.lda, test)
+confusionMatrix(predictions, test$Species)
+```
+
+##Conclusion
+
+Therefore, we can conclude that the methof of Linear Discriminant Analysis, or LDA, is the most accurate prediction method given our use of test and validation sets. It boasted an accuracy of 100% with a p-value of only 4.857e-15. 
